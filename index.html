@@ -1,0 +1,24 @@
+import random
+import time
+
+messages = [
+    "今日はいける気がする",
+    "コーヒー飲みすぎた",
+    "バグは友だち",
+    "まだ本気出してない",
+    "とりあえずOK"
+]
+
+def main():
+    print("🚀 てきとープログラム起動中...")
+    time.sleep(1)
+
+    for i in range(3):
+        msg = random.choice(messages)
+        print(f"{i+1}回目: {msg}")
+        time.sleep(0.5)
+
+    print("✅ なんかそれっぽく終了")
+
+if __name__ == "__main__":
+    main()
