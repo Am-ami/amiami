@@ -1,24 +1,218 @@
-import random
-import time
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>課題管理カレンダー</title>
+<style>
+  body {
+    font-family: sans-serif;
+  }
 
-messages = [
-    "今日はいける気がする",
-    "コーヒー飲みすぎた",
-    "バグは友だち",
-    "まだ本気出してない",
-    "とりあえずOK"
-]
+  .container {
+    width: fit-content;
+    margin: 0 auto;
+    text-align: center;
+  }
 
-def main():
-    print("🚀 てきとープログラム起動中...")
-    time.sleep(1)
+  .notice {
+    background: #FFEBEE;
+    border: 2px solid #F44336;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-weight: bold;
+  }
 
-    for i in range(3):
-        msg = random.choice(messages)
-        print(f"{i+1}回目: {msg}")
-        time.sleep(0.5)
+  table {
+    border-collapse: collapse;
+    margin: 0 auto;
+  }
 
-    print("✅ なんかそれっぽく終了")
+  th, td {
+    border: 1px solid #ccc;
+    width: 90px;
+    height: 90px;
+    vertical-align: top;
+    text-align: left;
+    padding: 6px;
+    font-size: 18px;
+  }
 
-if __name__ == "__main__":
-    main()
+  th {
+    background: #f5f5f5;
+    text-align: center;
+  }
+
+  .safe { background: #E8F5E9; }
+  .warn { background: #FFF3E0; }
+  .danger { background: #FFEBEE; }
+
+  .today {
+    border: 4px solid #2196F3 !important;
+  }
+
+  .task {
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .done {
+    text-decoration: line-through;
+    color: #888;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <h2>課題管理カレンダー</h2>
+
+  <div id="noticeArea"></div>
+
+  <div style="margin-bottom: 10px;">
+    <input type="date" id="date">
+    <input type="text" id="taskInput" placeholder="課題名">
+    <button onclick="addTask()">追加</button>
+  </div>
+
+  <h3 id="month"></h3>
+  <table id="calendar"></table>
+
+</div>
+
+<script>
+const tasks = JSON.parse(localStorage.getItem("tasks")) || {};
+
+const today = new Date();
+today.setHours(0,0,0,0);
+
+const todayStr =
+  today.getFullYear() + "-" +
+  String(today.getMonth() + 1).padStart(2,"0") + "-" +
+  String(today.getDate()).padStart(2,"0");
+
+const now = new Date();
+const year = now.getFullYear();
+const month = now.getMonth();
+
+document.getElementById("month").textContent =
+  year + "年 " + (month + 1) + "月";
+
+function save() {
+  localStorage.setItem("tasks", JSON.stringify(tasks));
+}
+
+function addTask() {
+  const d = date.value;
+  const t = taskInput.value;
+  if (!d || !t) return;
+
+  if (!tasks[d]) tasks[d] = [];
+  tasks[d].push({ text: t, done: false });
+
+  taskInput.value = "";
+  save();
+  drawCalendar();
+}
+
+function toggleTask(dateStr, index) {
+  tasks[dateStr][index].done = !tasks[dateStr][index].done;
+  save();
+  drawCalendar();
+}
+
+function showNotice() {
+  const area = document.getElementById("noticeArea");
+  area.innerHTML = "";
+
+  if (!tasks[todayStr]) return;
+
+  const undone = tasks[todayStr].filter(t => !t.done);
+  if (undone.length === 0) return;
+
+  const div = document.createElement("div");
+  div.className = "notice";
+  div.textContent =
+    "⚠ 今日が期限の課題があります！：" +
+    undone.map(t => t.text).join("、");
+
+  area.appendChild(div);
+}
+
+function drawCalendar() {
+  showNotice();
+
+  const cal = document.getElementById("calendar");
+  cal.innerHTML = "";
+
+  const first = new Date(year, month, 1).getDay();
+  const last = new Date(year, month + 1, 0).getDate();
+
+  let tr = document.createElement("tr");
+  ["日","月","火","水","木","金","土"].forEach(d => {
+    const th = document.createElement("th");
+    th.textContent = d;
+    tr.appendChild(th);
+  });
+  cal.appendChild(tr);
+
+  tr = document.createElement("tr");
+  for (let i = 0; i < first; i++) tr.appendChild(document.createElement("td"));
+
+  for (let day = 1; day <= last; day++) {
+    if ((first + day - 1) % 7 === 0) {
+      cal.appendChild(tr);
+      tr = document.createElement("tr");
+    }
+
+    const td = document.createElement("td");
+    const dateStr =
+      year + "-" +
+      String(month + 1).padStart(2,"0") + "-" +
+      String(day).padStart(2,"0");
+
+    td.innerHTML = "<strong>" + day + "</strong>";
+
+    if (tasks[dateStr]) {
+      const diff =
+        (new Date(dateStr) - today) / (1000 * 60 * 60 * 24);
+
+      if (diff <= 2) td.classList.add("danger");
+      else if (diff <= 5) td.classList.add("warn");
+      else td.classList.add("safe");
+
+      tasks[dateStr].forEach((task, i) => {
+        const div = document.createElement("div");
+        div.className = "task";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = task.done;
+        cb.onchange = () => toggleTask(dateStr, i);
+
+        const span = document.createElement("span");
+        span.textContent = task.text;
+        if (task.done) span.classList.add("done");
+
+        div.appendChild(cb);
+        div.appendChild(span);
+        td.appendChild(div);
+      });
+    }
+
+    if (dateStr === todayStr) {
+      td.classList.add("today");
+    }
+
+    tr.appendChild(td);
+  }
+  cal.appendChild(tr);
+}
+
+drawCalendar();
+</script>
+
+</body>
+</html>
